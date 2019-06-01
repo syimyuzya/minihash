@@ -69,33 +69,56 @@ impl ArrayOfItems {
 mod tests {
     use super::*;
 
-    use std::sync::Arc;
+    use std::sync::{Arc, Barrier};
     use std::thread;
 
-    #[test]
-    fn it_works() {
-        let arr = Arc::new(ArrayOfItems::new(8192));
-        let a1 = Arc::clone(&arr);
+    fn test_array_of_items(num: u32) {
+        let arr = Arc::new(ArrayOfItems::new(num as usize * 2));
+        let barrier = Arc::new(Barrier::new(2));
+        let a = Arc::clone(&arr);
+        let b = Arc::clone(&barrier);
         let handle1 = thread::spawn(move || {
-            for i in 0..4000 {
+            for i in 0..num {
                 let k = i * 2 + 2;
-                a1.set(NonZeroU32::new(k).unwrap(), NonZeroU32::new(k + 1).unwrap());
+                a.set(NonZeroU32::new(k).unwrap(), NonZeroU32::new(k + 1).unwrap());
             }
-            for k in 1..=8000 {
-                assert_eq!(a1.get(NonZeroU32::new(k).unwrap()).unwrap().get(), k + 1);
+            b.wait();
+            for k in 1..=(num * 2) {
+                assert_eq!(
+                    k + 1,
+                    a.get(NonZeroU32::new(k).unwrap())
+                        .map(NonZeroU32::get)
+                        .unwrap_or(0),
+                    "{:?}",
+                    *a,
+                );
             }
         });
-        let a2 = Arc::clone(&arr);
+        let a = Arc::clone(&arr);
+        let b = Arc::clone(&barrier);
         let handle2 = thread::spawn(move || {
-            for i in 0..4000 {
-                let k = (4000 - 1 - i) * 2 + 1;
-                a2.set(NonZeroU32::new(k).unwrap(), NonZeroU32::new(k + 1).unwrap());
+            for i in 0..num {
+                let k = (num - 1 - i) * 2 + 1;
+                a.set(NonZeroU32::new(k).unwrap(), NonZeroU32::new(k + 1).unwrap());
             }
-            for k in 1..=8000 {
-                assert_eq!(a2.get(NonZeroU32::new(k).unwrap()).unwrap().get(), k + 1);
+            b.wait();
+            for k in (1..=(num * 2)).rev() {
+                assert_eq!(
+                    k + 1,
+                    a.get(NonZeroU32::new(k).unwrap())
+                        .map(NonZeroU32::get)
+                        .unwrap_or(0),
+                    "{:?}",
+                    *a,
+                );
             }
         });
         handle1.join().unwrap();
         handle2.join().unwrap();
+    }
+
+    #[test]
+    fn it_works() {
+        test_array_of_items(4000);
     }
 }
