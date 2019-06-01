@@ -1,4 +1,4 @@
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, Wrapping};
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -28,14 +28,19 @@ impl MiniHash {
 
     pub fn set(&self, key: NonZeroU32, value: NonZeroU32) {
         let key = key.get();
-        for entry in self.entries.iter() {
+        let capacity = self.capacity();
+        let mut i = simple_hash(key) as usize % capacity;
+        for _ in 0..capacity {
+            let entry = &self.entries[i];
             let entry_key = entry.key.load(SeqCst);
             if entry_key != key {
                 if entry_key != 0 {
+                    i = (i + 1) % capacity;
                     continue;
                 }
                 let prev_key = entry.key.compare_and_swap(0, key, SeqCst);
                 if prev_key != 0 && prev_key != key {
+                    i = (i + 1) % capacity;
                     continue;
                 }
             }
@@ -46,7 +51,10 @@ impl MiniHash {
     }
     pub fn get(&self, key: NonZeroU32) -> Option<NonZeroU32> {
         let key = key.get();
-        for entry in self.entries.iter() {
+        let capacity = self.capacity();
+        let mut i = simple_hash(key) as usize % capacity;
+        for _ in 0..capacity {
+            let entry = &self.entries[i];
             let entry_key = entry.key.load(SeqCst);
             if entry_key == key {
                 return NonZeroU32::new(entry.value.load(SeqCst));
@@ -54,6 +62,7 @@ impl MiniHash {
             if entry_key == 0 {
                 return None;
             }
+            i = (i + 1) % capacity;
         }
         None
     }
@@ -69,6 +78,16 @@ impl MiniHash {
     pub fn is_empty(&self) -> bool {
         self.len() > 0
     }
+}
+
+fn simple_hash(x: u32) -> u32 {
+    let mut x = Wrapping(x);
+    x ^= x >> 16;
+    x *= Wrapping(0x85eb_ca6b);
+    x ^= x >> 13;
+    x *= Wrapping(0xc2b2_ae35);
+    x ^= x >> 16;
+    x.0
 }
 
 #[cfg(test)]
@@ -125,6 +144,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        test_minihash(4000);
+        test_minihash(24000);
     }
 }
