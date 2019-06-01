@@ -28,13 +28,19 @@ impl ArrayOfItems {
 
     pub fn set(&self, key: NonZeroU32, value: NonZeroU32) {
         let key = key.get();
-        // XXX change to optimized version
         for entry in self.entries.iter() {
-            let prev = entry.key.compare_and_swap(0, key, SeqCst);
-            if prev == 0 || prev == key {
-                entry.value.store(value.get(), SeqCst);
-                return;
+            let entry_key = entry.key.load(SeqCst);
+            if entry_key != key {
+                if entry_key != 0 {
+                    continue;
+                }
+                let prev_key = entry.key.compare_and_swap(0, key, SeqCst);
+                if prev_key != 0 && prev_key != key {
+                    continue;
+                }
             }
+            entry.value.store(value.get(), SeqCst);
+            return;
         }
         panic!("array is full"); // XXX
     }
