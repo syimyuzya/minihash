@@ -98,7 +98,7 @@ mod tests {
     use std::thread;
 
     fn test_minihash(num: u32) {
-        let arr = Arc::new(MiniHash::new(num as usize * 2));
+        let arr = Arc::new(MiniHash::new(num as usize * 3));
         let barrier = Arc::new(Barrier::new(2));
         let a = Arc::clone(&arr);
         let b = Arc::clone(&barrier);
@@ -144,6 +144,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        test_minihash(24000);
+        test_minihash(131_072);
     }
 }
