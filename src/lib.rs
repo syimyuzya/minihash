@@ -9,18 +9,18 @@ struct Entry {
 }
 
 #[derive(Debug)]
-pub struct ArrayOfItems {
+pub struct MiniHash {
     entries: Box<[Entry]>,
 }
 
-impl ArrayOfItems {
+impl MiniHash {
     pub fn new(capacity: usize) -> Self {
         let mut vec = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             vec.push(Entry::default());
         }
         let entries = vec.into_boxed_slice();
-        ArrayOfItems { entries }
+        MiniHash { entries }
     }
     pub fn capacity(&self) -> usize {
         self.entries.len()
@@ -78,8 +78,8 @@ mod tests {
     use std::sync::{Arc, Barrier};
     use std::thread;
 
-    fn test_array_of_items(num: u32) {
-        let arr = Arc::new(ArrayOfItems::new(num as usize * 2));
+    fn test_minihash(num: u32) {
+        let arr = Arc::new(MiniHash::new(num as usize * 2));
         let barrier = Arc::new(Barrier::new(2));
         let a = Arc::clone(&arr);
         let b = Arc::clone(&barrier);
@@ -125,6 +125,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        test_array_of_items(4000);
+        test_minihash(4000);
     }
 }
